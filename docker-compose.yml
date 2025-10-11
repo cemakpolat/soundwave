@@ -1,0 +1,130 @@
+services:
+  postgres:
+    image: postgres:14
+    container_name: soundwave_postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - soundwave_network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: soundwave_pgadmin
+    env_file:
+      - .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - soundwave_network
+
+  minio:
+    image: minio/minio:latest
+    container_name: soundwave_minio
+    ports:
+      - "9000:9000"     # MinIO API
+      - "9001:9001"     # MinIO Console (Web UI)
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-soundwave}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-soundwave123}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - soundwave_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # redis:
+  #   image: redis:6
+  #   container_name: soundwave_redis
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - soundwave_network
+
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: soundwave_backend
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     DB_HOST: postgres
+  #     DB_PORT: 5432
+  #     DB_USER: ${POSTGRES_USER}
+  #     DB_PASSWORD: ${POSTGRES_PASSWORD}
+  #     DB_NAME: ${POSTGRES_DB}
+  #     REDIS_HOST: redis
+  #     REDIS_PORT: 6379
+  #     JWT_SECRET: ${JWT_SECRET}
+  #     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+  #     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+  #     AWS_BUCKET_NAME: ${AWS_BUCKET_NAME}
+  #   ports:
+  #     - "5000:5000"
+  #   depends_on:
+  #     - postgres
+  #     - redis
+  #   networks:
+  #     - soundwave_network
+
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: soundwave_frontend
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     REACT_APP_API_URL: http://localhost:5000
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - soundwave_network
+
+  
+
+  # redis-commander:
+  #   image: rediscommander/redis-commander:latest
+  #   container_name: soundwave_redis_commander
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     REDIS_HOSTS: redis
+  #   ports:
+  #     - "8081:8081"
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - soundwave_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  soundwave_network:
